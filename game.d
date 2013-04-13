@@ -5,7 +5,11 @@ import std.stdio;
 
 void main()
 {
-	RenderWindow window = new RenderWindow(VideoMode(640,480), "DSFML yay!", Window.Style.Titlebar | Window.Style.Resize | Window.Style.Close, ContextSettings(0,0,10,2,0));
+	RenderWindow window = new RenderWindow(
+				VideoMode(640,480),
+				"DSFML yay!",
+				Window.Style.Close,
+				ContextSettings(0,0,10,2,0));
 	Event event;
 	Clock clock = new Clock();
 	float dt;
