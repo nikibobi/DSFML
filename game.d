@@ -111,10 +111,13 @@ void main()
 	const uint minPoints = 6;
 	const uint maxPoints = 16;
 	const uint pointCount = 11;
-	Vector2f[string] dir = ["up":Vector2f(0,-1),"left":Vector2f(-1,0),"down":Vector2f(0,1),"right":Vector2f(1,0)];
+	Vector2f[string] dir = ["up":Vector2f(0,-1),
+							"left":Vector2f(-1,0),
+							"down":Vector2f(0,1),
+							"right":Vector2f(1,0)];
 
 	Music music = new Music();
-	if(music.loadFromFile("blackandyellow.wav"))
+	if(music.loadFromFile("blackandyellow.ogg"))
 	{
 		music.isLooping = true;
 		music.volume = 1000;
@@ -163,6 +166,7 @@ void main()
 		shape.radius = clamp(shape.radius + sign * radStep * dt, minRadius, maxRadius);
 		shape.rotation = shape.rotation + sign * rotStep * dt * ((maxRadius - shape.radius) / (maxRadius - minRadius)) + sign * dt * 50f;
 		shape.origin = Vector2f(shape.radius, shape.radius);
+		shape.outlineThickness = clamp(shape.outlineThickness - sign * radStep * dt, minRadius, maxRadius / 6);
 		if(sign == -1)
 		{
 			shape.fillColor = shape.fillColor - col * (dt * 700);
@@ -176,13 +180,13 @@ void main()
 		music.pitch = clamp(music.pitch - sign * 0.05 * dt, 0.8, 1.2);
 
 		if(Keyboard.isKeyPressed(Keyboard.Key.W))
-			shape.position = shape.position + dir["up"] * step * dt;
+			window.position = window.position + dir["up"] * step * dt;
 		if(Keyboard.isKeyPressed(Keyboard.Key.A))
-			shape.position = shape.position + dir["left"] * step * dt;
+			window.position = window.position + dir["left"] * step * dt;
 		if(Keyboard.isKeyPressed(Keyboard.Key.S))
-			shape.position = shape.position + dir["down"] * step * dt;
+			window.position = window.position + dir["down"] * step * dt;
 		if(Keyboard.isKeyPressed(Keyboard.Key.D))
-			shape.position = shape.position + dir["right"] * step * dt;
+			window.position = window.position + dir["right"] * step * dt;
 
 		foreach(nigga; niggas)
 		{
