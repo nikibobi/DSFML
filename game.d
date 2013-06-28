@@ -38,6 +38,13 @@ class Nigga
 	    shape.outlineThickness = 16;
 		shape.outlineColor = Color.Black;
 		shape.fillColor = Color.Yellow;
+
+		Texture texture = new Texture();
+		if(texture.loadFromFile("dong.png", IntRect(0, 0, 250, 250)))
+		{
+			shape.setTexture(texture, false);
+		}
+
 		polyInterval = 0;
 		sign = 0;
 	}
@@ -90,7 +97,7 @@ void main()
 {
 	//initialization
 	uint style = Window.Style.Close;
-	const(ContextSettings) settings = ContextSettings(0,0,10,2,0);
+	ContextSettings settings = ContextSettings(0,0,10,2,0);
 	RenderWindow window = new RenderWindow(
 				VideoMode(640,480),
 				"NIGGA PLEASE!",
@@ -133,21 +140,12 @@ void main()
 	//other circles
 	Nigga[] niggas = [new Nigga(),new Nigga(),new Nigga(),new Nigga()];
 
-	//Circle main
-	CircleShape shape = new CircleShape(radius, pointCount);
-    shape.origin = Vector2f(radius,radius);
-    shape.position = Vector2f(window.size.x/2f, window.size.y/2f);
-    shape.outlineThickness = 16;
-	shape.outlineColor = Color.Black;
-	shape.fillColor = Color.Yellow;
-
-	//enemy sprite
+	//texture
 	Texture texture = new Texture();
 	if(!texture.loadFromFile("enemy.png", IntRect(0, 0, 250, 250)))
 	{
 		writeln("texture could not be loaded");
 	}
-	Sprite sprite = new Sprite(texture);
 
 	//shaders
 	Shader vertShader = new Shader();
@@ -172,6 +170,23 @@ void main()
 	{
 		writeln("Shaders not supported");
 	}
+
+	//Circle main
+	CircleShape shape = new CircleShape(radius, pointCount);
+    shape.origin = Vector2f(radius,radius);
+    shape.position = Vector2f(window.size.x/2f, window.size.y/2f);
+    shape.outlineThickness = 16;
+	shape.outlineColor = Color(32, 32, 32, 255);//Color.Black;
+	shape.fillColor = Color.Yellow;
+	shape.setTexture(texture, false);
+
+	RenderStates shapeState = RenderStates();
+	shapeState.blendMode = BlendMode.Multiply;
+	shapeState.shader = vertShader;
+
+	RenderStates niggaState = RenderStates();
+	niggaState.blendMode = BlendMode.Multiply;
+	niggaState.shader = fragShader;
 
 	while(window.isOpen())
 	{
@@ -246,13 +261,11 @@ void main()
 		}
 
 		window.clear(clear);
-
 		foreach(nigga; niggas)
 		{
-			nigga.draw(window, RenderStates.Default());
+			nigga.draw(window, niggaState);
 		}
-		window.draw(shape, RenderStates(vertShader));
-		window.draw(sprite, RenderStates(fragShader));
+		window.draw(shape, shapeState);
 		window.display();
 	}
 }
