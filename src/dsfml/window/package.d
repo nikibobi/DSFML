@@ -27,19 +27,21 @@ Copyright (C) 2007-2013 Laurent Gomila (laurent.gom@gmail.com)
 
 All Libraries used by SFML - For a full list see http://www.sfml-dev.org/license.php
 */
-module dsfml.system.all;
-//pragma(lib,"dsfml-system");
+module dsfml.window;
+
 public
 {
-	import dsfml.system.clock;
-	import dsfml.system.err;
-	import dsfml.system.inputstream;
-	import dsfml.system.lock;
-	import dsfml.system.mutex;
-	import dsfml.system.sleep;
-	import dsfml.system.thread;
-	import dsfml.system.time;
-	import dsfml.system.vector2;
-	import dsfml.system.vector3;
+	import dsfml.system;
+
+	import dsfml.window.context;
+	import dsfml.window.contextsettings;
+	import dsfml.window.event;
+	import dsfml.window.joystick;
+	import dsfml.window.keyboard;
+	import dsfml.window.mouse;
+	import dsfml.window.videomode;
+	import dsfml.window.window;
+	import dsfml.window.windowhandle;
 }
+
 

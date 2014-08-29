@@ -75,7 +75,7 @@ void initialize()
 		writeln("Building for Linux");
 		prefix = "lib";
 		extension = ".a";
-		compilerSwitches = "-lib -O -release -inline -property -I"~impDirectory;;
+		compilerSwitches = "-lib -O -release -inline -property -I"~impDirectory;
 	}
 	else
 	{
@@ -98,12 +98,11 @@ void build()
 			fileList~= name ~ " ";
 		}
 
-		string buildCommand = "dmd "~ fileList ~ compilerSwitches ~ " -of"~libDirectory~prefix~"dsfml-"~theModule~extension;
+		string buildCommand = "dmd "~ fileList ~ compilerSwitches ~ " -of"~libDirectory~prefix~"dsfml-"~theModule~"-2"~extension;
 		
 		writeln("Building " ~ theModule~ " module.");
 		
 		auto status = executeShell(buildCommand);
-		//writeln(status.output);
 	}
 }
 void main(string[] args)

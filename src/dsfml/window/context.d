@@ -29,8 +29,6 @@ All Libraries used by SFML - For a full list see http://www.sfml-dev.org/license
 */
 module dsfml.window.context;
 
-debug import std.stdio;
-
 class Context
 {
 	package sfContext* sfPtr;
@@ -42,7 +40,8 @@ class Context
 	
 	~this()
 	{
-		debug writeln("Destroying Context");
+		debug import dsfml.system.config;
+		debug mixin(destructorOutput);
 		sfContext_destroy(sfPtr);	
 	}
 	
@@ -64,3 +63,4 @@ private extern(C)
 	void sfContext_setActive(sfContext* context, bool active);
 }
 //unittest?
+//I'll probably write one just to confirm no segfaults happen and to up the coverage amount

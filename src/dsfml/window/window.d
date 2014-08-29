@@ -38,7 +38,7 @@ import dsfml.system.err;
 import std.conv;
 import std.string;
 import std.utf;
-debug import std.stdio;
+
 
 class Window
 {
@@ -63,67 +63,35 @@ class Window
 	this(VideoMode mode, string title, Style style = Style.DefaultStyle, ref const(ContextSettings) settings = ContextSettings.Default)
 	{
 		sfPtr = sfWindow_create(mode.width, mode.height, mode.bitsPerPixel, toStringz(title), style, settings.depthBits, settings.stencilBits, settings.antialiasingLevel, settings.majorVersion, settings.minorVersion);
-		err.write(text(sfErrWindow_getOutput()));
+		err.write(text(sfErr_getOutput()));
 	}
 	
 	//in order to envoke this constructor when using string literals, be sure to use the d suffix, i.e. "素晴らしい ！"d
 	this(VideoMode mode, dstring title, Style style = Style.DefaultStyle, ref const(ContextSettings) settings = ContextSettings.Default)
 	{
 		sfPtr = sfWindow_createUnicode(mode.width, mode.height, mode.bitsPerPixel, toUTF32z(title), style, settings.depthBits, settings.stencilBits, settings.antialiasingLevel, settings.majorVersion, settings.minorVersion);
-		err.write(text(sfErrWindow_getOutput()));
+		err.write(text(sfErr_getOutput()));
 	}
-	
-	
+
 	this(WindowHandle handle, ref const(ContextSettings) settings = ContextSettings.Default)
 	{
 		sfPtr = sfWindow_createFromHandle(handle, settings.depthBits,settings.stencilBits, settings.antialiasingLevel, settings.majorVersion, settings.minorVersion);
-		err.write(text(sfErrWindow_getOutput()));
+		err.write(text(sfErr_getOutput()));
 	}
 	
 	~this()
 	{
-		debug writeln("Destroying Window");
+		debug import dsfml.system.config;
+		debug mixin(destructorOutput);
 		sfWindow_destroy(sfPtr);
 	}
-	
-	bool pollEvent(ref Event event)
-	{
-		return (sfWindow_pollEvent(sfPtr, &event));
-	}
-	
-	bool waitEvent(ref Event event)
-	{
-		return (sfWindow_waitEvent(sfPtr, &event));
-	}
-	
-	void setTitle(string newTitle)
-	{
-		sfWindow_setTitle(sfPtr, toStringz(newTitle));
-	}
-	
-	void setTitle(dstring newTitle)
-	{
-		sfWindow_setUnicodeTitle(sfPtr, toUTF32z(newTitle));
-	}
-	
-	void close()
-	{
-		sfWindow_close(sfPtr);
-	}
-	
-	ContextSettings getSettings() const
-	{
-		ContextSettings temp;
-		sfWindow_getSettings(sfPtr,&temp.depthBits, &temp.stencilBits, &temp.antialiasingLevel, &temp.majorVersion, &temp.minorVersion);
-		return temp;
-	}
-	
-	
+
 	@property
 	{
-		void position(Vector2i newPosition)
+		Vector2i position(Vector2i newPosition)
 		{
 			sfWindow_setPosition(sfPtr,newPosition.x, newPosition.y);
+			return newPosition;
 		}
 		
 		Vector2i position()
@@ -133,12 +101,13 @@ class Window
 			return temp;
 		}
 	}
-
+	
 	@property
 	{
-		void size(Vector2u newSize)
+		Vector2u size(Vector2u newSize)
 		{
 			sfWindow_setSize(sfPtr, newSize.x, newSize.y);
+			return newSize;
 		}
 		Vector2u size()
 		{
@@ -147,12 +116,49 @@ class Window
 			return temp;
 		}
 	}
-	
+
+	bool setActive(bool active)
+	{
+		bool toReturn = sfWindow_setActive(sfPtr, active);
+		err.write(text(sfErr_getOutput()));
+		return toReturn;
+	}
+
+	void setFramerateLimit(uint limit)
+	{
+		sfWindow_setFramerateLimit(sfPtr, limit);
+	}
+
 	void setIcon(uint width, uint height, const(ubyte[]) pixels)
 	{
 		sfWindow_setIcon(sfPtr,width, height, pixels.ptr);
 	}
+
+	void setJoystickThreshhold(float threshhold)
+	{
+		sfWindow_setJoystickThreshold(sfPtr, threshhold);
+	}
+
+	void setKeyRepeatEnabled(bool enabled)
+	{
+		enabled ? sfWindow_setKeyRepeatEnabled(sfPtr,true):sfWindow_setKeyRepeatEnabled(sfPtr,false);
+	}
+
+	void setMouseCursorVisible(bool visible)
+	{
+		visible ? sfWindow_setMouseCursorVisible(sfPtr,true): sfWindow_setMouseCursorVisible(sfPtr,false);
+	}
+
+	void setTitle(string newTitle)
+	{
+		sfWindow_setTitle(sfPtr, toStringz(newTitle));
+	}
 	
+	void setTitle(dstring newTitle)
+	{
+		sfWindow_setUnicodeTitle(sfPtr, toUTF32z(newTitle));
+	}
+
 	void setVisible(bool visible)
 	{
 		sfWindow_setVisible(sfPtr,visible);
@@ -162,53 +168,50 @@ class Window
 	{
 		enabled ? sfWindow_setVerticalSyncEnabled(sfPtr, true): sfWindow_setVerticalSyncEnabled(sfPtr, false);
 	}
-	
-	void setMouseCursorVisible(bool visible)
+
+	ContextSettings getSettings() const
 	{
-		visible ? sfWindow_setMouseCursorVisible(sfPtr,true): sfWindow_setMouseCursorVisible(sfPtr,false);
+		ContextSettings temp;
+		sfWindow_getSettings(sfPtr,&temp.depthBits, &temp.stencilBits, &temp.antialiasingLevel, &temp.majorVersion, &temp.minorVersion);
+		return temp;
 	}
-	
-	void setKeyRepeatEnabled(bool enabled)
-	{
-		enabled ? sfWindow_setKeyRepeatEnabled(sfPtr,true):sfWindow_setKeyRepeatEnabled(sfPtr,false);
-	}
-	
-	void setFramerateLimit(uint limit)
-	{
-		sfWindow_setFramerateLimit(sfPtr, limit);
-	}
-	
-	void setJoystickThreshhold(float threshhold)
-	{
-		sfWindow_setJoystickThreshold(sfPtr, threshhold);
-	}
-	
+
 	WindowHandle getSystemHandle() const
 	{
 		return sfWindow_getSystemHandle(sfPtr);
 	}
-	
+
+
 	//TODO: Consider adding these methods.
 	//void onCreate
 	//void onResize
-	
-	bool isOpen()
+
+	void close()
 	{
-		return (sfWindow_isOpen(sfPtr));
+		sfWindow_close(sfPtr);
 	}
-	
-	bool setActive(bool active)
-	{
-		bool toReturn = sfWindow_setActive(sfPtr, active);
-		err.write(text(sfErrWindow_getOutput()));
-		return toReturn;
-	}
-	
+
 	void display()
 	{
 		sfWindow_display(sfPtr);
 	}
 
+	bool isOpen()
+	{
+		return (sfWindow_isOpen(sfPtr));
+	}
+
+	bool pollEvent(ref Event event)
+	{
+		return (sfWindow_pollEvent(sfPtr, &event));
+	}
+	
+	bool waitEvent(ref Event event)
+	{
+		return (sfWindow_waitEvent(sfPtr, &event));
+	}
+
+	//TODO: Clean this shit up. The names are so bad. :(
 
 	//Gives a way for RenderWindow to send its mouse position 
 	protected Vector2i getMousePosition()const
@@ -224,12 +227,12 @@ class Window
 		return getMousePosition();
 	}
 
-	protected void setMousePosition(Vector2i pos)
+	protected void setMousePosition(Vector2i pos) const
 	{
 		sfMouse_setPosition(pos.x, pos.y, sfPtr);
 	}
 
-	package void mouse_SetPosition(Vector2i pos)
+	package void mouse_SetPosition(Vector2i pos) const
 	{
 		setMousePosition(pos);
 	}
@@ -245,69 +248,71 @@ class Window
 
 unittest
 {
-	import std.stdio;
-	import dsfml.graphics.image;
-
-	//constructor
-	auto window = new Window(VideoMode(800,600),"Test Window");
-
-	//perform each window call
-	Vector2u windowSize = window.size;
-
-	windowSize.x = 1000;
-	windowSize.y = 1000;
-
-	window.size = windowSize;
-
-	Vector2i windowPosition = window.position;
-
-	windowPosition.x = 100;
-	windowPosition.y = 100;
-
-	window.position = windowPosition;
-
-	window.setTitle("thing");//uses the first set title
-
-	window.setTitle("素晴らしい ！"d);//forces the dstring override and uses unicode
-
-	window.setActive(true);
-
-	window.setJoystickThreshhold(1);
-
-	window.setVisible(true);
-
-	window.setFramerateLimit(60);
-
-	window.setMouseCursorVisible(true);
-
-	window.setVerticalSyncEnabled(true);
-
-	auto settings = window.getSettings();
-
-	auto image = new Image();
-	image.loadFromFile("Crono.png");//replace with something that won't get me in trouble
-
-	window.setIcon(image.getSize().x,image.getSize().x,image.getPixelArray());
-
-	if(window.isOpen())
+	version(DSFML_Unittest_Window)
 	{
-		Event event;
-		if(window.pollEvent(event))
+		import std.stdio;
+		import dsfml.graphics.image;
+
+		//constructor
+		auto window = new Window(VideoMode(800,600),"Test Window");
+
+		//perform each window call
+		Vector2u windowSize = window.size;
+
+		windowSize.x = 1000;
+		windowSize.y = 1000;
+
+		window.size = windowSize;
+
+		Vector2i windowPosition = window.position;
+
+		windowPosition.x = 100;
+		windowPosition.y = 100;
+
+		window.position = windowPosition;
+
+		window.setTitle("thing");//uses the first set title
+
+		window.setTitle("素晴らしい ！"d);//forces the dstring override and uses unicode
+
+		window.setActive(true);
+
+		window.setJoystickThreshhold(1);
+
+		window.setVisible(true);
+
+		window.setFramerateLimit(60);
+
+		window.setMouseCursorVisible(true);
+
+		window.setVerticalSyncEnabled(true);
+
+		auto settings = window.getSettings();
+
+		auto image = new Image();
+		image.loadFromFile("Crono.png");//replace with something that won't get me in trouble
+
+		window.setIcon(image.getSize().x,image.getSize().x,image.getPixelArray());
+
+		if(window.isOpen())
 		{
+			Event event;
+			if(window.pollEvent(event))
+			{
 
+			}
+			//requires users input
+			if(window.waitEvent(event))
+			{
+
+			}
+
+			window.display();
 		}
-		//requires users input
-		if(window.waitEvent(event))
-		{
 
-		}
+		window.close();
 
-		window.display();
 	}
-
-	window.close();
-
-
 }
 
 
@@ -399,7 +404,7 @@ private extern(C)
 	void sfMouse_getPosition(const(sfWindow)* relativeTo, int* x, int* y);
 	void sfMouse_setPosition(int x, int y, const(sfWindow)* relativeTo);
 
-	const(char)* sfErrWindow_getOutput();
+	const(char)* sfErr_getOutput();
 }
 
 

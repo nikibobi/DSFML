@@ -31,64 +31,93 @@ All Libraries used by SFML - For a full list see http://www.sfml-dev.org/license
 module dsfml.audio.soundrecorder;
 
 import core.thread;
-import std.stdio;
-
 import dsfml.system.err;
 import std.conv;
 
+/++
+ + Abstract base class for capturing sound data.
+ + 
+ + SoundBuffer provides a simple interface to access the audio recording capabilities of the computer (the microphone).
+ + 
+ + As an abstract base class, it only cares about capturing sound samples, the task of making something useful with them is left to the derived class. Note that SFML provides a built-in specialization for saving the captured data to a sound buffer (see SoundBufferRecorder).
+ + 
+ + A derived class has only one virtual function to override:
+ + 
+ + onProcessSamples provides the new chunks of audio samples while the capture happens
+ + 
+ + Moreover, two additionnal virtual functions can be overriden as well if necessary:
+ + 
+ + onStart is called before the capture happens, to perform custom initializations
+ + onStop is called after the capture ends, to perform custom cleanup
+ + 
+ + The audio capture feature may not be supported or activated on every platform, thus it is recommended to check its availability with the isAvailable() function. If it returns false, then any attempt to use an audio recorder will fail.
+ + 
+ + It is important to note that the audio capture happens in a separate thread, so that it doesn't block the rest of the program. In particular, the onProcessSamples and onStop virtual functions (but not onStart) will be called from this separate thread. It is important to keep this in mind, because you may have to take care of synchronization issues if you share data between threads.
+ + 
+ + See_Also: http://www.sfml-dev.org/documentation/2.0/classsf_1_1SoundRecorder.php#details
+ + Authors: Laurent Gomila, Jeremy DeHaan
+ +/
 class SoundRecorder
 {
-	 protected this()
-	{
-		sfSoundSource_ensureALInit();
-		err.write(text(sfErrAudio_getOutput()));
+	package sfSoundRecorder* sfPtr;
+	private SoundRecorderCallBacks callBacks;
 
-		m_thread = new Thread(&record);
-		m_isCapturing = false;
-		recorder = sfSoundRecorder_create();
+
+	protected this()
+	{
+		callBacks = new SoundRecorderCallBacks(this);
+		sfPtr = sfSoundRecorder_create(callBacks);
+
+		err.write(text(sfErr_getOutput()));
 	}
 
 	~this()
 	{
-		sfSoundRecorder_destroy(recorder);
+		debug import dsfml.system.config;
+		debug mixin(destructorOutput);
+		sfSoundRecorder_destroy(sfPtr);
 	}
+
+	/**
+	 * Start the capture.
+	 * The sampleRate parameter defines the number of audio samples captured per second. The higher, the better the quality (for example, 44100 samples/sec is CD quality). This function uses its own thread so that it doesn't block the rest of the program while the capture runs. Please note that only one capture can happen at the same time.
+	 * 
+	 * Params:
+	 * 		sampleRate =	Desired capture rate, in number of samples per second
+	 */
    	void start(uint theSampleRate = 44100)
 	{
-		//Initialize the device before starting to capture
-		if(!sfSoundRecorder_initialize(recorder, theSampleRate))
-		{
-			err.write(text(sfErrAudio_getOutput()));
-			return;
-		}
+		sfSoundRecorder_start(sfPtr, sampleRate);
 
-		m_sampleRate = theSampleRate;
-
-		//notify the derived class
-		if(onStart())
-		{
-			//start the capture
-			sfSoundRecorder_startCapture(recorder);
-			//start the capturing in a new thread to avoid blocking the main thread
-			m_isCapturing = true;
-			m_thread.start();
-		}
-
+		err.write(text(sfErr_getOutput()));
 	}
+
+	/// Stop the capture.
 	void stop()
 	{
-		//stop the capturing thread
-		m_isCapturing = false;
-		m_thread.join(true);
+		sfSoundRecorder_stop(sfPtr);
 	}
 
+	/**
+	 * Get the sample rate in samples per second.
+	 * 
+	 * The sample rate defines the number of audio samples captured per second. The higher, the better the quality (for example, 44100 samples/sec is CD quality).
+	 */
 	@property
 	{
 		uint sampleRate()
 		{
-			return m_sampleRate;
+			return sfSoundRecorder_getSampleRate(sfPtr);
 		}
 	}
 
+	/**
+	 * Check if the system supports audio capture.
+	 * 
+	 * This function should always be called before using the audio capture features. If it returns false, then any attempt to use SoundRecorder or one of its derived classes will fail.
+	 * 
+	 * Returns: True if audio capture is supported, false otherwise
+	 */
 	static bool isAvailable()
 	{
 		return sfSoundRecorder_isAvailable();
@@ -96,105 +125,95 @@ class SoundRecorder
 
 	protected
 	{
-		abstract bool onStart();
+		/**
+		 * Start capturing audio data.
+		 * 
+		 * This virtual function may be overriden by a derived class if something has to be done every time a new capture starts. If not, this function can be ignored; the default implementation does nothing.
+		 * 
+		 * Returns: True to the start the capture, or false to abort it.
+		 */
+		bool onStart()
+		{
+			return true;
+		}
 
-		abstract bool onProcessSamples(short[] samples);
+		/**
+		 * Process a new chunk of recorded samples.
+		 * 
+		 * This virtual function is called every time a new chunk of recorded data is available. The derived class can then do whatever it wants with it (storing it, playing it, sending it over the network, etc.).
+		 * 
+		 * Params:
+		 * 		samples =	Array of the new chunk of recorded samples
+		 * 
+		 * Returns: True to continue the capture, or false to stop it
+		 */
+		abstract bool onProcessSamples(const(short)[] samples);
 
-		abstract void onStop();
+		/**
+		 * Stop capturing audio data.
+		 * 
+		 * This virtual function may be overriden by a derived class if something has to be done every time the capture ends. If not, this function can be ignored; the default implementation does nothing.
+		 */
+		void onStop()
+		{
+		}
 
 	}
 
-	private
-	{
-		void record()
-		{
-			while(m_isCapturing)
-			{
-
-				processCapturedSamples();
-
-
-				//don't bother the CPU while waiting for more captured data
-				Thread.sleep( dur!("msecs")( 100) );
-			}
-			//capture is finished: cleanup everything
-			cleanup();
-
-			//notify derived class
-			onStop();
-		}
-
-		void processCapturedSamples()
-		{
-			//writeln("Capturing");
-			//short* samples;
-			int samplesAvailable = sfSoundRecorder_getNumAvailableSamples(recorder);//sfSoundRecorder_captureSamples(captureDevice, samples, recorder);
-
-			if(samplesAvailable > 0)
-			{
-
-				short* samples = sfSoundRecorder_getSamplePointer(recorder, samplesAvailable);
-
-
-			
-				//forward them to the derived class
-				if(!onProcessSamples(samples[0 .. samplesAvailable]))
-				{
-					//The user wants to stop the capture
-					m_isCapturing = false;
-				}
-			}
-
-		}
-
-		void cleanup()
-		{
-			//stop the capture
-			sfSoundRecorder_stopCapture(recorder);
-
-			//get the samples left in the buffer
-			processCapturedSamples();
-
-			//close the device
-			sfSoundRecorder_closeDevice(recorder);
-			//captureDevice = null;
-
-		}
-
-		Thread m_thread;
-		//short[] m_samples;
-		sfSoundRecorder* recorder;
-		uint m_sampleRate;
-		bool m_isCapturing;
-	}
 
 }
 
+private:
 
+private extern(C++) interface sfmlSoundRecorderCallBacks
+{
+public:
+	bool onStart();
+	bool onProcessSamples(const(short)* samples, size_t sampleCount);
+	void onStop();
+}
 
+private class SoundRecorderCallBacks: sfmlSoundRecorderCallBacks
+{
+	import std.stdio;
 
+	SoundRecorder m_recorder;
+
+	this(SoundRecorder recorder)
+	{
+
+		m_recorder = recorder;
+	}
+
+	extern(C++) bool onStart()
+	{
+		return m_recorder.onStart();
+	}
+	extern(C++) bool onProcessSamples(const(short)* samples, size_t sampleCount)
+	{
+		return m_recorder.onProcessSamples(samples[0..sampleCount]);
+	}
+	extern(C++) void onStop()
+	{
+		m_recorder.onStop();
+	}
+}
 
 private extern(C):
 
-void sfSoundSource_ensureALInit();
 struct sfSoundRecorder;
 
-sfSoundRecorder* sfSoundRecorder_create();
+sfSoundRecorder* sfSoundRecorder_create(SoundRecorderCallBacks newCallBacks);
 
-void sfSoundRecorder_destroy(sfSoundRecorder* recorder);
+void sfSoundRecorder_destroy(sfSoundRecorder* soundRecorder);
 
-bool sfSoundRecorder_initialize(sfSoundRecorder* recorder, uint sampleRate); 
+void sfSoundRecorder_start(sfSoundRecorder* soundRecorder, uint sampleRate);
 
-void sfSoundRecorder_startCapture(sfSoundRecorder* recorder);
+void sfSoundRecorder_stop(sfSoundRecorder* soundRecorder);
 
-int sfSoundRecorder_getNumAvailableSamples(sfSoundRecorder* recorder);
-
-short* sfSoundRecorder_getSamplePointer(sfSoundRecorder* recorder, int numSamples);
-
-void sfSoundRecorder_stopCapture(sfSoundRecorder* recorder);
-
-void sfSoundRecorder_closeDevice(sfSoundRecorder* recorder);
+uint sfSoundRecorder_getSampleRate(const sfSoundRecorder* soundRecorder);
 
 bool sfSoundRecorder_isAvailable();
 
-const(char)* sfErrAudio_getOutput();
+const(char)* sfErr_getOutput();
+

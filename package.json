@@ -1,0 +1,67 @@
+{
+        "name": "dsfml",
+        "description": "DSFML binding for SFML-The Simple and Fast Multimedia Library",
+        "authors": ["Jeremy DeHaan"],
+        "homepage": "https://github.com/Jebbs/DSFML",
+        "license": "Zlib",
+        "dependencies": {
+            "dsfml:audio": "~master",
+            "dsfml:graphics": "~master",
+            "dsfml:window": "~master",
+            "dsfml:network": "~master",
+            "dsfml:system": "~master"
+        },
+        "subPackages":
+        [
+                {
+                        "name": "audio",
+                        "targetType": "library",
+                        "sourcePaths": ["src/dsfml/audio"],
+                        "libs": [ "dsfml-audio" ],
+                        "libs-linux": ["openal","sndfile"],
+                        "dependencies": 
+                        { 
+                                "dsfml:system": "~master" 
+                        }
+                },
+                {
+                        "name": "graphics",
+                        "targetType": "library",
+                        "sourcePaths": ["src/dsfml/graphics"],
+                        "libs": [ "dsfml-graphics" ],
+                        "libs-linux":["jpeg","GL","GLU","freetype","GLEW"],
+                        "dependencies": 
+                        { 
+                                "dsfml:system": "~master",
+                                "dsfml:window": "~master"
+                        }
+                },
+                {
+                        "name": "window",
+                        "sourcePaths": ["src/dsfml/window"],
+                        "libs": [ "dsfml-window" ],
+                        "libs-linux":["X11","Xrandr"],
+                        "dependencies": 
+                        { 
+                                "dsfml:system": "~master" 
+                        }
+                },
+                {
+                        "name": "network",
+                        "targetType": "library",
+                        "sourcePaths": ["src/dsfml/network"],
+                        "libs": [ "dsfml-network" ],
+                        "dependencies": 
+                        { 
+                                "dsfml:system": "~master" 
+                        }
+                },
+                {
+                        "name": "system",
+                        "targetType": "library",
+                        "importPaths": ["src/"],
+                        "sourcePaths": ["src/dsfml/system"],
+                        "libs": [ "dsfml-system" ]
+                }
+        ]
+}

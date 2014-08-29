@@ -34,8 +34,6 @@ import dsfml.network.tcplistener;
 import dsfml.network.tcpsocket;
 import dsfml.network.udpsocket;
 
-debug import std.stdio;
-
 import dsfml.system.time;
 
 class SocketSelector
@@ -49,7 +47,8 @@ class SocketSelector
 	
 	~this()
 	{
-		debug writeln("Destroying Socket Selector");
+		debug import dsfml.system.config;
+		debug mixin(destructorOutput);
 		sfSocketSelector_destroy(sfPtr);
 	}
 	
@@ -67,31 +66,12 @@ class SocketSelector
 	{
 		sfSocketSelector_addUdpSocket(sfPtr, socket.sfPtr);
 	}
-	
-	void remove(TcpListener listener)
-	{
-		sfSocketSelector_removeTcpListener(sfPtr, listener.sfPtr);
-	}
-	void remove(TcpSocket socket)
-	{
-		sfSocketSelector_removeTcpSocket(sfPtr, socket.sfPtr);
-	}
-	
-	void remove(UdpSocket socket)
-	{
-		sfSocketSelector_removeUdpSocket(sfPtr, socket.sfPtr);
-	}
-	
+
 	void clear()
 	{
 		sfSocketSelector_clear(sfPtr);
 	}
-	
-	bool wait(Time timeout = Time.Zero)
-	{
-		return (sfSocketSelector_wait(sfPtr, timeout.asMicroseconds()));
-	}
-	
+
 	bool isReady(TcpListener listener)
 	{
 		return (sfSocketSelector_isTcpListenerReady(sfPtr, listener.sfPtr));
@@ -105,7 +85,66 @@ class SocketSelector
 	{
 		return (sfSocketSelector_isUdpSocketReady(sfPtr, socket.sfPtr));
 	}
+
+	void remove(TcpListener listener)
+	{
+		sfSocketSelector_removeTcpListener(sfPtr, listener.sfPtr);
+	}
+	void remove(TcpSocket socket)
+	{
+		sfSocketSelector_removeTcpSocket(sfPtr, socket.sfPtr);
+	}
 	
+	void remove(UdpSocket socket)
+	{
+		sfSocketSelector_removeUdpSocket(sfPtr, socket.sfPtr);
+	}
+
+	bool wait(Time timeout = Time.Zero)
+	{
+		return (sfSocketSelector_wait(sfPtr, timeout.asMicroseconds()));
+	}
+}
+
+unittest
+{
+	version(DSFML_Unittest_Network)
+	{
+		import std.stdio;
+		import dsfml.network.ipaddress;
+
+		
+		writeln("Unittest for SocketSelector");
+
+		auto selector = new SocketSelector();
+
+		//get a listener and start listening to a new port
+		auto listener = new TcpListener();
+		listener.listen(55004);
+
+		//add the listener to the selector
+		selector.add(listener);
+
+		//The client tries to connect to the server
+		auto clientSocket = new TcpSocket();
+		clientSocket.connect(IpAddress.LocalHost, 55004);
+
+
+		//wait for the selector to be informed of new things!
+		selector.wait();
+
+		auto serverSocket = new TcpSocket();
+		//the listener is ready! New connections are available 
+		if(selector.isReady(listener))
+		{	
+			writeln("Accepted the connection.");
+			listener.accept(serverSocket);
+		}
+
+
+
+		writeln();
+	}
 }
 
 private extern(C):

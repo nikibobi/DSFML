@@ -33,18 +33,27 @@ import dsfml.graphics.shape;
 
 import dsfml.system.vector2;
 
-debug import std.stdio;
-
-import std.math;
-
-class CircleShape:Shape
+/++
+ + Specialized shape representing a circle.
+ + 
+ + This class inherits all the functions of Transformable (position, rotation, scale, bounds, ...) as well as the functions of Shape (outline, color, texture, ...).
+ + 
+ + Since the graphics card can't draw perfect circles, we have to fake them with multiple triangles connected to each other. The "points count" property of CircleShape defines how many of these triangles to use, and therefore defines the quality of the circle.
+ + 
+ + Authors: Laurent Gomila, Jeremy DeHaan
+ + See_Also: http://www.sfml-dev.org/documentation/2.0/classsf_1_1CircleShape.php#details
+ +/
+class CircleShape : Shape
 {
 	private
 	{
 		float m_radius; /// Radius of the circle
 		uint m_pointCount; /// Number of points composing the circle
 	}
-	
+
+	/// Params:
+	/// 		radius =		Radius of the circle
+	/// 		pointCount =	Number of points composing the circle
 	this(float radius = 0, uint pointCount = 30)
 	{
 		m_radius = radius;
@@ -56,9 +65,67 @@ class CircleShape:Shape
 	
 	~this()
 	{
-		debug writeln("Destroying CircleShape");
+		debug import dsfml.system.config;
+		debug mixin(destructorOutput);
 	}
 
+	/// The number of points of the circle
+	@property
+	{
+		uint pointCount(uint newPointCount)
+		{
+			m_pointCount = newPointCount;
+			return newPointCount;
+		}
+		override uint pointCount()
+		{
+			return m_pointCount;
+		}
+	}
+
+	/// The radius of the circle
+	@property
+	{
+		float radius(float newRadius)
+		{
+			m_radius = newRadius;
+			update();
+			return newRadius;
+		}
+		float radius()
+		{
+			return m_radius;
+		}
+	}
+
+	/**
+	 * Get a point of the shape.
+	 * 
+	 * The result is undefined if index is out of the valid range.
+	 * 
+	 * Params:
+	 * 		index =	Index of the point to get, in range [0 .. pointCount - 1].
+	 * 
+	 * Returns: Index-th point of the shape.
+	 */
+	override Vector2f getPoint(uint index) const
+	{
+		import std.math;
+
+		static const(float) pi = 3.141592654f;
+		
+		float angle = index * 2 * pi / m_pointCount - pi / 2;
+		
+		
+		float x = cos(angle) * m_radius;
+		float y = sin(angle) * m_radius;
+		
+		
+		return Vector2f(m_radius + x, m_radius + y);
+	}
+
+	/// Clones this CircleShape
+	@property
 	CircleShape dup() const
 	{
 		CircleShape temp = new CircleShape(m_radius, m_pointCount);
@@ -71,48 +138,47 @@ class CircleShape:Shape
 		return temp;
 	}
 	
-	
-	@property
+}
+
+unittest
+{
+	version(DSFML_Unittest_Graphics)
 	{
-		void pointCount(uint newPointCount)
+		import std.stdio;
+		import dsfml.graphics;
+
+		writeln("Unit test for CircleShape");
+		auto window = new RenderWindow(VideoMode(800,600), "CircleShape unittest");
+
+		auto circleShape = new CircleShape(20);
+
+		circleShape.fillColor = Color.Blue;
+
+		circleShape.outlineColor = Color.Green;
+	
+		auto clock = new Clock();
+
+
+		while(window.isOpen())
 		{
-			m_pointCount = newPointCount;
+			Event event;
+
+			while(window.pollEvent(event))
+			{
+				//no events gonna do stuffs!
+			}
+
+			//draws the shape for a while before closing the window
+			if(clock.getElapsedTime().asSeconds() >1)
+			{
+				window.close();
+			}
+
+			window.clear();
+			window.draw(circleShape);
+			window.display();
 		}
-		override uint pointCount()
-		{
-			return m_pointCount;
-		}
+
+		writeln();
 	}
-	
-	override Vector2f getPoint(uint index) const
-	{
-		
-		static const(float) pi = 3.141592654f;
-		
-		float angle = index * 2 * pi / m_pointCount - pi / 2;
-		
-		
-		float x = cos(angle) * m_radius;
-		float y = sin(angle) * m_radius;
-		
-		
-		return Vector2f(m_radius + x, m_radius + y);
-	}
-	
-	
-	
-	@property
-	{
-		void radius(float newRadius)
-		{
-			m_radius = newRadius;
-			update();
-		}
-		float radius()
-		{
-			return m_radius;
-		}
-	}
-	
-	
 }

@@ -35,11 +35,7 @@ import dsfml.network.ipaddress;
 import dsfml.network.packet;
 
 import dsfml.system.time;
-
 import dsfml.system.err;
-import std.conv;
-
-debug import std.stdio;
 
 class TcpSocket:Socket
 {
@@ -52,40 +48,36 @@ class TcpSocket:Socket
 	
 	~this()
 	{
-		debug writeln("Destroying Tcp Socket");
+		debug import dsfml.system.config;
+		debug mixin(destructorOutput);
 		sfTcpSocket_destroy(sfPtr);
 	}
-	
-	void setBlocking(bool blocking)
-	{
-		sfTcpSocket_setBlocking(sfPtr, blocking);
-	}
-	
-	bool isBlocking()
-	{
-		return (sfTcpSocket_isBlocking(sfPtr));
-	}
-	
+
 	ushort getLocalPort()
 	{
 		return sfTcpSocket_getLocalPort(sfPtr);
 	}
-	
+
 	IpAddress getRemoteAddress()
 	{
 		IpAddress temp;
-
+		
 		sfTcpSocket_getRemoteAddress(sfPtr,temp.m_address.ptr);
-
+		
 		return temp;
 	}
-	
+
 	ushort getRemotePort()
 	{
 		return sfTcpSocket_getRemotePort(sfPtr);
 	}
-	
-	Status connect(IpAddress host, ushort port, Time timeout)
+
+	void setBlocking(bool blocking)
+	{
+		sfTcpSocket_setBlocking(sfPtr, blocking);
+	}
+
+	Status connect(IpAddress host, ushort port, Time timeout = Time.Zero)
 	{
 		return sfTcpSocket_connect(sfPtr, host.m_address.ptr,port, timeout.asMicroseconds());
 	}
@@ -94,36 +86,48 @@ class TcpSocket:Socket
 	{
 		sfTcpSocket_disconnect(sfPtr);
 	}
-	
+
+	bool isBlocking()
+	{
+		return (sfTcpSocket_isBlocking(sfPtr));
+	}
+
 	Status send(const(void)[] data)
 	{
+		import std.conv;
+
 		Status toReturn = sfTcpSocket_send(sfPtr, data.ptr, data.length);
-		err.write(text(sfErrNetwork_getOutput()));
+		err.write(text(sfErr_getOutput()));
 		return toReturn;
 	}
 
-	Status receive(out void[] data, size_t maxSize)
-	{
-		void* dataPtr;
-		size_t sizeReceived;
-
-		Status status = sfTcpSocket_receive(sfPtr, dataPtr, maxSize, &sizeReceived);
-
-		data = dataPtr[0..sizeReceived];
-
-		return status;
-	}
 	Status send(Packet packet)
 	{
 
 		//temporary packet to be removed on function exit
-		scope Packet temp = new Packet;
+		scope Packet temp = new Packet();
 
 		//getting packet's "to send" data
 		temp.append(packet.onSend());
 
 		//send the data
 		return sfTcpSocket_sendPacket(sfPtr, temp.sfPtr);
+	}
+
+	Status receive(out void[] data, size_t maxSize)
+	{
+		void* dataPtr;
+		size_t sizeReceived;
+		
+		Status status = sfTcpSocket_receive(sfPtr, dataPtr, maxSize, &sizeReceived);
+		//TODO: catch when maxSize is < than Size received?
+		data = dataPtr[0..sizeReceived];
+
+		import std.stdio;
+
+		//writeln(sizeReceived);
+		
+		return status;
 	}
 	
 	Status receive(Packet packet)
@@ -139,15 +143,75 @@ class TcpSocket:Socket
 
 		return status;
 	}
-	
-	
 }
 
+unittest
+{
+	//TODO: Expand to use more methods in TcpSocket
+	version(DSFML_Unittest_Network)
+	{
+		import std.stdio;
+		import dsfml.network.tcplistener;
 
-private extern(C):
+		writeln("Unittest for Tcp Socket");
+
+		//socket connecting to server
+		auto clientSocket = new TcpSocket();
+		
+		//listener looking for new sockets
+		auto listener = new TcpListener();
+		listener.listen(55003);
+		
+		//get our client socket to connect to the server
+		clientSocket.connect(IpAddress.LocalHost, 55003);
+		
+		
+		
+		//packet to send data
+		auto sendPacket = new Packet();
+		
+		
+		//Packet to receive data
+		auto receivePacket = new Packet();
+		
+		//socket on the server side connected to the client's socket
+		auto serverSocket = new TcpSocket();
+		
+		//accepts a new connection and binds it to the socket in the parameter
+		listener.accept(serverSocket);
+		
+		//Let's greet the server!
+		sendPacket.writeString("Hello, I'm a client!");
+		clientSocket.send(sendPacket);
+		
+		//And get the data on the server side
+		serverSocket.receive(receivePacket);
+		
+		//What did we get from the client?
+		writeln("Gotten from client: " ,receivePacket.readString());
+		
+		//clear the packets to send/get new information
+		sendPacket.clear();
+		receivePacket.clear();
+		
+		//Respond back to the client
+		sendPacket.writeString("Hello, I'm your server.");
+		
+		serverSocket.send(sendPacket);
+
+		clientSocket.receive(receivePacket);
+
+
+		
+		writeln("Gotten from server: ", receivePacket.readString());
+		
+		clientSocket.disconnect();
+	}
+}
+
+package extern(C):
 
 struct sfTcpSocket;
-
 
 //Create a new TCP socket
 sfTcpSocket* sfTcpSocket_create();
@@ -200,5 +264,5 @@ Socket.Status sfTcpSocket_sendPacket(sfTcpSocket* socket, sfPacket* packet);
 //Receive a formatted packet of data from the remote peer
 Socket.Status sfTcpSocket_receivePacket(sfTcpSocket* socket, sfPacket* packet);
 
-const(char)* sfErrNetwork_getOutput();
+const(char)* sfErr_getOutput();
 

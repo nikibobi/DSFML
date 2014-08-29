@@ -30,15 +30,43 @@ All Libraries used by SFML - For a full list see http://www.sfml-dev.org/license
 module dsfml.graphics.rect;
 
 import std.traits;
-import std.conv;
+
 import dsfml.system.vector2;
 
+/++
+ + Utility class for manipulating 2D axis aligned rectangles.
+ + 
+ + A rectangle is defined by its top-left corner and its size.
+ + 
+ + It is a very simple class defined for convenience, so its member variables (left, top, width and height) are public and can be accessed directly, just like the vector classes (Vector2 and Vector3).
+ + 
+ + To keep things simple, Rect doesn't define functions to emulate the properties that are not directly members (such as right, bottom, center, etc.), it rather only provides intersection functions.
+ + 
+ + Rect uses the usual rules for its boundaries:
+ + - The let and top edges are included in the rectangle's area
+ + - The right (left + width) and bottom (top + height) edges are excluded from the rectangle's area
+ + 
+ + This means that IntRect(0, 0, 1, 1) and IntRect(1, 1, 1, 1) don't intersect.
+ + 
+ + Rect is a template and may be used with any numeric type, but for simplicity the instanciations used by SFML are typedefed:
+ + - Rect!(int) is IntRect
+ + - Rect!(float) is FloatRect
+ + 
+ + So that you don't have to care about the template syntax.
+ + 
+ + Authors: Laurent Gomila, Jeremy DeHaan
+ + See_Also: http://www.sfml-dev.org/documentation/2.0/classsf_1_1Rect.php#details
+ +/
 struct Rect(T)
 	if(isNumeric!(T))
 {
+	/// Left coordinate of the rectangle.
 	T left = 0;
+	/// Top coordinate of the rectangle.
 	T top = 0;
+	/// Width of the rectangle.
 	T width= 0;
+	/// HEight of the rectangle.
 	T height = 0;
 	
 
@@ -48,7 +76,6 @@ struct Rect(T)
 		top = rectTop;
 		width = rectWidth;
 		height = rectHeight;
-		
 	}
 	
 	this(Vector2!(T) position, Vector2!(T) size)
@@ -58,10 +85,17 @@ struct Rect(T)
 		width = size.x;
 		height = size.y;
 	}
-	
 
-	
-	bool contains(E)(E X, E Y)
+	/**
+	 * Check if a point is inside the rectangle's area.
+	 * 
+	 * Params:
+	 * 		x	= X coordinate of the point to test
+	 * 		y	= Y coordinate of the point to test
+	 * 
+	 * Returns: True if the point is inside, false otherwise.
+	 */
+	bool contains(E)(E X, E Y) const
 		if(isNumeric!(E))
 	{
 		if(left <= X && X<= (left + width))
@@ -80,7 +114,16 @@ struct Rect(T)
 			return false;
 		}
 	}
-	bool contains(E)(Vector2!(E) point)
+
+	/**
+	 * Check if a point is inside the rectangle's area.
+	 * 
+	 * Params:
+	 * 		point	= Point to test
+	 * 
+	 * Returns: True if the point is inside, false otherwise.
+	 */
+	bool contains(E)(Vector2!(E) point) const
 		if(isNumeric!(E))
 	{
 		if(left <= point.x && point.x<= (left + width))
@@ -99,16 +142,35 @@ struct Rect(T)
 			return false;
 		}
 	}
-	
-	bool intersects(E)(Rect!(E) rectangle)
-		if(isNumeric!(E))
+
+	/**
+	 * Check the intersection between two rectangles.
+	 * 
+	 * Params:
+	 * 		rectangle	= Rectangle to test
+	 * 
+	 * Returns: True if rectangles overlap, false otherwise.
+	 */
+	bool intersects(E)(Rect!(E) rectangle) const
+	if(isNumeric!(E))
 	{
 		Rect!(T) rect;
 		
 		return intersects(rectangle, rect);
 	}
-	
-	bool intersects(E,O)(Rect!(E) rectangle, out Rect!(O) intersection)
+
+	/**
+	 * Check the intersection between two rectangles.
+	 * 
+	 * This overload returns the overlapped rectangle in the intersection parameter.
+	 * 
+	 * Params:
+	 * 		rectangle		= Rectangle to test
+	 * 		intersection	= Rectangle to be filled with the intersection
+	 * 
+	 * Returns: True if rectangles overlap, false otherwise.
+	 */
+	bool intersects(E,O)(Rect!(E) rectangle, out Rect!(O) intersection) const
 		if(isNumeric!(E) && isNumeric!(O))
 	{
 		O interLeft = intersection.max(left, rectangle.left);
@@ -127,10 +189,16 @@ struct Rect(T)
 			return false;
 		}
 	}
-	
-	
+
+	bool opEquals(E)(const Rect!(E) otherRect) const
+		if(isNumeric!(E))
+	{
+		return ((left == otherRect.left) && (top == otherRect.top) && (width == otherRect.width) && (height == otherRect.height) );
+	}
+
 	string toString()
 	{
+		import std.conv;
 		return "Left: " ~ text(left) ~ " Top: " ~ text(top) ~ " Width: " ~ text(width) ~ " Height: " ~ text(height);
 	}
 	
@@ -158,6 +226,37 @@ struct Rect(T)
 		}
 	}
 
+}
+
+unittest
+{
+	version(DSFML_Unittest_Graphics)
+	{
+		import std.stdio;
+
+		writeln("Unit test for Rect");
+
+		auto rect1 = IntRect(0,0,100,100);
+		auto rect2 = IntRect(10,10,100,100);
+		auto rect3 = IntRect(10,10,10,10);
+		auto point = Vector2f(-20,-20);
+
+
+
+		assert(rect1.intersects(rect2));
+
+		FloatRect interRect;
+
+		rect1.intersects(rect2, interRect);
+
+		assert(interRect == IntRect(10,10, 90, 90));
+
+		assert(rect1.contains(10,10));
+
+		assert(!rect1.contains(point));
+
+		writeln();
+	}
 }
 
 alias Rect!(int) IntRect;

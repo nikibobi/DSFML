@@ -29,7 +29,7 @@ All Libraries used by SFML - For a full list see http://www.sfml-dev.org/license
 */
 module dsfml.window.joystick;
 
-class Joystick
+final abstract class Joystick
 {
 	enum
 	{
@@ -49,36 +49,90 @@ class Joystick
 		PovX,
 		PovY
 	}
-	
-	static bool isConnected(uint joystick)
-	{
-		return (sfJoystick_isConnected(joystick));
-	}
-	
+
 	static uint getButtonCount(uint joystick)
 	{
 		return sfJoystick_getButtonCount(joystick);
 	}
-	
-	static void update()
+
+	static float getAxisPosition(uint joystick, Axis axis)
 	{
-		sfJoystick_update();
+		return sfJoystick_getAxisPosition(joystick, axis);
 	}
 	
 	static bool hasAxis(uint joystick, Axis axis)
 	{
 		return (sfJoystick_hasAxis(joystick, axis));
 	}
-	
-	static float getAxisPosition(uint joystick, Axis axis)
+
+	static bool isConnected(uint joystick)
 	{
-		return sfJoystick_getAxisPosition(joystick, axis);
+		return (sfJoystick_isConnected(joystick));
 	}
+
 	static bool isButtonPressed(uint joystick, uint button)
 	{
 		return sfJoystick_isButtonPressed(joystick, button);
 	}
+
+	static void update()
+	{
+		sfJoystick_update();
+	}
 	
+}
+
+unittest
+{
+	version(DSFML_Unittest_Window)
+	{
+
+		import std.stdio;
+	
+		Joystick.update();
+	
+		bool[] joysticks = [false,false,false,false,false,false,false,false]; 
+	
+		for(uint i; i < Joystick.JoystickCount; ++i)
+		{
+			if(Joystick.isConnected(i))
+			{
+				joysticks[i] = true;
+				writeln("Joystick number ",i," is connected!");
+			}
+		}
+	
+		foreach(uint i,bool joystick;joysticks)
+		{
+			if(joystick)
+			{
+				//Check buttons
+				uint buttonCounts = Joystick.getButtonCount(i);
+			
+				for(uint j = 0; j<buttonCounts; ++j)
+				{
+					if(Joystick.isButtonPressed(i,j))
+					{
+						writeln("Button ", j, " was pressed on joystick ", i);
+					}
+				}
+			
+				//check axis
+				for(int j = 0; j<Joystick.JoystickAxisCount;++j)
+				{
+					Joystick.Axis axis = cast(Joystick.Axis)j;
+					
+					if(Joystick.hasAxis(i,axis))
+					{
+						writeln("Axis ", axis, " has a position of ", Joystick.getAxisPosition(i,axis), "for joystick", i);
+					
+					
+					}
+				}
+			
+			}
+		}
+	}
 }
 
 private extern(C):
@@ -100,51 +154,4 @@ float sfJoystick_getAxisPosition(uint joystick, int axis);
 //Update the states of all joysticks
 void sfJoystick_update();
 
-unittest
-{
-	import std.stdio;
 
-	Joystick.update();
-
-	bool[] joysticks = [false,false,false,false,false,false,false,false]; 
-
-	for(uint i; i < Joystick.JoystickCount; ++i)
-	{
-		if(Joystick.isConnected(i))
-		{
-			joysticks[i] = true;
-			writeln("Joystick number ",i," is connected!");
-		}
-	}
-
-	foreach(uint i,bool joystick;joysticks)
-	{
-		if(joystick)
-		{
-			//Check buttons
-			uint buttonCounts = Joystick.getButtonCount(i);
-
-			for(uint j = 0; j<buttonCounts; ++j)
-			{
-				if(Joystick.isButtonPressed(i,j))
-				{
-					writeln("Button ", j, " was pressed on joystick ", i);
-				}
-			}
-
-			//check axis
-			for(int j = 0; j<Joystick.JoystickAxisCount;++j)
-			{
-				Joystick.Axis axis = cast(Joystick.Axis)j;
-
-				if(Joystick.hasAxis(i,axis))
-				{
-					writeln("Axis ", axis, " has a position of ", Joystick.getAxisPosition(i,axis), "for joystick", i);
-
-
-				}
-			}
-
-		}
-	}
-}

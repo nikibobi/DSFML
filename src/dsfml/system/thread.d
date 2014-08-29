@@ -37,27 +37,34 @@ import core = core.thread;
 
 class Thread
 {
-	core.Thread InternalThread;
+	private core.Thread m_thread;
+
 	this(void function() fn, size_t sz = 0)
 	{
-		InternalThread = new core.Thread(fn,sz);
+		m_thread = new core.Thread(fn,sz);
 	}
 
 	this(void delegate() dg, size_t sz = 0)
 	{
-		InternalThread = new core.Thread(dg, sz);
+		m_thread = new core.Thread(dg, sz);
+	}
+
+	~this()
+	{
+		debug import dsfml.system.config;
+		debug mixin(destructorOutput);
 	}
 
 	void launch()
 	{
-		InternalThread.start();
+		m_thread.start();
 	}
 
 	void wait()
 	{
-		if(InternalThread.isRunning())
+		if(m_thread.isRunning())
 		{
-			InternalThread.join(true);
+			m_thread.join(true);
 		}
 	}
 
@@ -69,49 +76,53 @@ class Thread
 
 unittest
 {
-	import std.stdio;
 
-	void secondThreadHello()
+
+	version(DSFML_Unittest_System)
 	{
+		import std.stdio;
+
+		void secondThreadHello()
+		{
+			for(int i = 0; i < 10; ++i)
+			{
+				writeln("Hello from the second thread!");
+			}
+		}
+
+
+
+
+		writeln("Unit test for Thread class");
+		writeln();
+
+		writeln("Running two functions at once.");
+
+		auto secondThread = new Thread(&secondThreadHello);
+
+
+		secondThread.launch();
+
 		for(int i = 0; i < 10; ++i)
 		{
-			writeln("Hello from the second thread!");
+			writeln("Hello from the main thread!");
+		}
+
+
+
+		writeln("Letting a thread run completely before going back to the main thread.");
+
+		secondThread = new Thread(&secondThreadHello);//To prevent threading errors, create a new thread before calling launch again
+
+		secondThread.launch();
+
+		secondThread.wait();
+
+		for(int i = 0; i < 10; ++i)
+		{
+			writeln("Hello from the main thread!");
 		}
 	}
-
-
-
-
-	writeln("Unit test for Thread class");
-	writeln();
-
-	writeln("Running two functions at once.");
-
-	auto secondThread = new Thread(&secondThreadHello);
-
-
-	secondThread.launch();
-
-	for(int i = 0; i < 10; ++i)
-	{
-		writeln("Hello from the main thread!");
-	}
-
-
-
-	writeln("Letting a thread run completely before going back to the main thread.");
-
-	secondThread = new Thread(&secondThreadHello);//To prevent threading errors, create a new thread before calling launch again
-
-	secondThread.launch();
-
-	secondThread.wait();
-
-	for(int i = 0; i < 10; ++i)
-	{
-		writeln("Hello from the main thread!");
-	}
-
 
 }
 

@@ -30,16 +30,17 @@ All Libraries used by SFML - For a full list see http://www.sfml-dev.org/license
 
 module dsfml.network.tcplistener;
 
-debug import std.stdio;
+
 import dsfml.network.socket;
 import dsfml.network.tcpsocket;
 
 import dsfml.system.err;
-import std.conv;
+
 
 class TcpListener:Socket
 {
 	sfTcpListener* sfPtr;
+
 	this()
 	{
 		sfPtr = sfTcpListener_create();
@@ -47,42 +48,77 @@ class TcpListener:Socket
 	
 	~this()
 	{
-		debug writeln("Destroying Tcp Listener");
+		debug import dsfml.system.config;
+		debug mixin(destructorOutput);
 		sfTcpListener_destroy(sfPtr);
 	}
-	
-	void setBlocking(bool blocking)
-	{
-		sfTcpListener_setBlocking(sfPtr, blocking);
-	}
-	
-	bool isBlocking()
-	{
-		return (sfTcpListener_isBlocking(sfPtr));
-	}
-	
+
 	ushort getLocalPort()
 	{
 		return sfTcpListener_getLocalPort(sfPtr);
 	}
-	
-	Status listen(ushort port)
+
+	void setBlocking(bool blocking)
 	{
-		Status toReturn = sfTcpListener_listen(sfPtr, port);
-		err.write(text(sfErrNetwork_getOutput()));
-		return toReturn;
+		sfTcpListener_setBlocking(sfPtr, blocking);
 	}
-	
+
 	Status accept(TcpSocket socket)
 	{
+		import std.conv;
 		Status toReturn = sfTcpListener_accept(sfPtr, &socket.sfPtr); 
-		err.write(text(sfErrNetwork_getOutput()));
+		err.write(text(sfErr_getOutput()));
 		return toReturn; 
 	}
-	
+
+	Status listen(ushort port)
+	{
+		import std.conv;
+		Status toReturn = sfTcpListener_listen(sfPtr, port);
+		err.write(text(sfErr_getOutput()));
+		return toReturn;
+	}
+
+	bool isBlocking()
+	{
+		return (sfTcpListener_isBlocking(sfPtr));
+	}
 }
 
-private extern(C):
+unittest
+{
+	version(DSFML_Unittest_Network)
+	{
+		import std.stdio;
+		import dsfml.network.ipaddress;
+
+		writeln("Unittest for Listener");
+		//socket connecting to server
+		auto clientSocket = new TcpSocket();
+		
+		//listener looking for new sockets
+		auto listener = new TcpListener();
+		listener.listen(55002);
+
+		writeln("The listener is listening to port ", listener.getLocalPort());
+
+		//get our client socket to connect to the server
+		clientSocket.connect(IpAddress.LocalHost, 55002);
+
+
+		//socket on the server side connected to the client's socket
+		auto serverSocket = new TcpSocket();
+		
+		//accepts a new connection and binds it to the socket in the parameter
+		listener.accept(serverSocket);
+
+		
+		clientSocket.disconnect();
+		writeln();
+	}
+}
+
+package extern(C):
 
 struct sfTcpListener;
 
@@ -112,4 +148,4 @@ Socket.Status sfTcpListener_listen(sfTcpListener* listener, ushort port);
 //Accept a new connection
 Socket.Status sfTcpListener_accept(sfTcpListener* listener, sfTcpSocket** connected);
 
-const(char)* sfErrNetwork_getOutput();
+const(char)* sfErr_getOutput();

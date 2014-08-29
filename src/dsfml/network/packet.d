@@ -30,8 +30,6 @@ All Libraries used by SFML - For a full list see http://www.sfml-dev.org/license
 
 module dsfml.network.packet;
 
-debug import std.stdio;
-
 import std.conv;
 
 class Packet
@@ -45,8 +43,19 @@ class Packet
 	
 	~this()
 	{
-		debug writeln("Destroying Packet");
+		debug import dsfml.system.config;
+		debug mixin(destructorOutput);
 		sfPacket_destroy(sfPtr);
+	}
+
+	const(void)[] getData()
+	{
+		return sfPacket_getData(sfPtr)[0..sfPacket_getDataSize(sfPtr)];
+	}
+	
+	deprecated("Getting data as a void* is deprecated. No need to find its size.") size_t getDataSize()
+	{
+		return sfPacket_getDataSize(sfPtr);
 	}
 
 	void append(const(void)[] data)
@@ -58,32 +67,22 @@ class Packet
 	{
 		sfPacket_append(sfPtr, data, sizeInBytes);	
 	}
-		
-	void clear()
-	{
-		sfPacket_clear(sfPtr);
-	}
-	
-	const(void)[] getData()
-	{
-		return sfPacket_getData(sfPtr)[0..sfPacket_getDataSize(sfPtr)];
-	}
 
-	deprecated("Getting data as a void* is deprecated. No need to find its size.") size_t getDataSize()
-	{
-		return sfPacket_getDataSize(sfPtr);
-	}
-	
-	bool endOfPacket()
-	{
-		return (sfPacket_endOfPacket(sfPtr));
-	}
-	
 	bool canRead()
 	{
 		return (sfPacket_canRead(sfPtr));
 	}
-	
+
+	void clear()
+	{
+		sfPacket_clear(sfPtr);
+	}
+
+	bool endOfPacket()
+	{
+		return (sfPacket_endOfPacket(sfPtr));
+	}
+
 	bool readBool()
 	{
 		return cast(bool)readByte();
@@ -103,6 +102,7 @@ class Packet
 	{
 		return sfPacket_readInt16(sfPtr);
 	}
+
 	ushort readUshort()
 	{
 		return sfPacket_readUint16(sfPtr);
@@ -112,6 +112,7 @@ class Packet
 	{
 		return sfPacket_readInt32(sfPtr);
 	}
+
 	uint readUint()
 	{
 		return sfPacket_readUint32(sfPtr);
@@ -171,17 +172,17 @@ class Packet
 		
 		return temp.to!dstring();
 	}
-	
-	
+
 	void writeBool(bool value)
 	{
 		writeUbyte(cast(ubyte)value);
 	}
-	
+
 	void writeByte(byte value)
 	{
 		sfPacket_writeInt8(sfPtr,value);
 	}
+
 	void writeUbyte(ubyte value)
 	{
 		sfPacket_writeUint8(sfPtr, value);
@@ -248,7 +249,6 @@ class Packet
 		}
 	}
 
-
 	const(void)[] onSend()
 	{
 		return getData();
@@ -261,7 +261,74 @@ class Packet
 	
 }
 
-private extern(C):
+unittest
+{
+	//TODO: Expand to use more of the mehtods found in Packet
+	version(DSFML_Unittest_Network)
+	{
+		import std.stdio;
+		import dsfml.network.tcpsocket;
+		import dsfml.network.tcplistener;
+		import dsfml.network.ipaddress;
+		
+		writeln("Unittest for Packet");
+
+		//socket connecting to server
+		auto clientSocket = new TcpSocket();
+
+		//listener looking for new sockets
+		auto listener = new TcpListener();
+		listener.listen(55001);
+
+		//get our client socket to connect to the server
+		clientSocket.connect(IpAddress.LocalHost, 55001);
+		
+
+		
+		//packet to send data
+		auto sendPacket = new Packet();
+
+
+		//Packet to receive data
+		auto receivePacket = new Packet();
+	
+		//socket on the server side connected to the client's socket
+		auto serverSocket = new TcpSocket();
+
+		//accepts a new connection and binds it to the socket in the parameter
+		listener.accept(serverSocket);
+
+		//Let's greet the server!
+		sendPacket.writeString("Hello, I'm a client!");
+		clientSocket.send(sendPacket);
+
+		//And get the data on the server side
+		serverSocket.receive(receivePacket);
+
+		//What did we get from the client?
+		writeln("Gotten from client: " ,receivePacket.readString());
+
+		//clear the packets to send/get new information
+		sendPacket.clear();
+		receivePacket.clear();
+
+		//Respond back to the client
+		sendPacket.writeString("Hello, I'm your server.");
+
+		serverSocket.send(sendPacket);
+		clientSocket.receive(receivePacket);
+		
+		
+		writeln("Gotten from server: ", receivePacket.readString());
+
+		clientSocket.disconnect();
+
+		
+		writeln();
+	}
+}
+
+package extern(C):
 
 struct sfPacket;
 

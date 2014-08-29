@@ -33,54 +33,164 @@ module dsfml.audio.soundbufferrecorder;
 import dsfml.audio.soundrecorder;
 import dsfml.audio.soundbuffer;
 
-import std.stdio;
 
+/++
+ + Specialized SoundRecorder which stores the captured audio data into a sound buffer.
+ + 
+ + SoundBufferRecorder allows to access a recorded sound through a SoundBuffer, so that it can be played, saved to a file, etc.
+ + 
+ + It has the same simple interface as its base class (start(), stop()) and adds a function to retrieve the recorded sound buffer (getBuffer()).
+ + 
+ + As usual, don't forget to call the isAvailable() function before using this class (see SoundRecorder for more details about this).
+ + 
+ + See_Also: http://www.sfml-dev.org/documentation/2.0/classsf_1_1SoundBufferRecorder.php#details
+ + Authors: Laurent Gomila, Jeremy DeHaan
+ +/
 class SoundBufferRecorder:SoundRecorder
 {
+	private
+	{
+		short[] m_samples;
+		SoundBuffer m_buffer;
+	}
+	
 	this()
 	{
 		// Constructor code
+		m_buffer = new SoundBuffer();
 	}
-
-	SoundBuffer getBuffer()
+	
+	~this()
+	{
+		debug import dsfml.system.config;
+		debug mixin(destructorOutput);
+	}
+	
+	/**
+	 * Get the sound buffer containing the captured audio data.
+	 * 
+	 * The sound buffer is valid only after the capture has ended. This function provides a read-only access to the internal sound buffer, but it can be copied if you need to make any modification to it.
+	 * 
+	 * Returns: Read-only access to the sound buffer
+	 */
+	const(SoundBuffer) getBuffer() const
 	{
 		return m_buffer;
 	}
-
+	
 	protected
 	{
-	override bool onStart()
-	{
-		m_samples.length = 0;
-		m_buffer = new SoundBuffer();
-
-		return true;
-	}
-
-	override bool onProcessSamples(short[] samples)
-	{
-			writeln(samples.length);
-
-
-			m_samples ~= samples;
-				
-
-		return true;
-	}
-
-	override void onStop()
-	{
-		if(m_samples.length >0)
+		/// Start capturing audio data.
+		/// Returns: True to start the capture, or false to abort it
+		override bool onStart()
 		{
-			m_buffer.loadFromSamples(m_samples,1,sampleRate);
+			m_samples.length = 0;
+			m_buffer = new SoundBuffer();
+			
+			return true;
+		}
+		
+		/**
+		 * Process a new chunk of recorded samples.
+		 * 
+		 * Params:
+		 * 		samples =	Array of the new chunk of recorded samples'
+		 * 
+		 * Returns: True to continue the capture, or false to stop it
+		 */
+		override bool onProcessSamples(const(short)[] samples)
+		{
+			m_samples ~= samples;
+			
+			return true;
+		}
+		
+		/// Stop capturing audio data.
+		/// 
+		/// Reimplemented from SoundRecorder.
+		override void onStop()
+		{
+			if(m_samples.length >0)
+			{
+				m_buffer.loadFromSamples(m_samples,1,sampleRate);
+			}
 		}
 	}
+}
+
+unittest
+{
+	//When this unit test is run it occasionally throws an error which will vary, and
+	//is obviously in OpenAL. Probably something to do with the way the binding is done. Will be fixed in 2.1.
+	version(DSFML_Unittest_Audio)
+	{
+		import std.stdio;
+		import dsfml.window.keyboard;
+		import dsfml.audio.sound;
+		import dsfml.system.time;
+		import dsfml.system.clock;
+		import dsfml.system.sleep;
+		
+		
+		writeln("Unit test for SoundBufferRecorder.");
+		
+		auto recorder = new SoundBufferRecorder();
+		
+		assert(SoundRecorder.isAvailable());
+		
+		
+		writeln("Press Enter to start recording.");
+		while(!Keyboard.isKeyPressed(Keyboard.Key.Return))
+		{
+			//wait for the user to press enter
+			if(Keyboard.isKeyPressed(Keyboard.Key.Return))
+			{
+				
+				recorder.start();
+			}
+		}
+		//make sure the next one diesn't trigger immediately
+		if(Keyboard.isKeyPressed(Keyboard.Key.Return))
+		{
+			//wait until they release the key
+			while(Keyboard.isKeyPressed(Keyboard.Key.Return))
+			{
+				//writeln(true);
+			}
+		}
+		
+		
+		writeln("Press Enter to stop recording.");
+		
+		while(!Keyboard.isKeyPressed(Keyboard.Key.Return))
+		{
+			if(Keyboard.isKeyPressed(Keyboard.Key.Return))
+			{
+				recorder.stop();
+			}
+		}
+
+
+
+		auto buffer = recorder.getBuffer();
+		
+		auto recorderDuration = buffer.getDuration();
+		
+		auto recorderSound = new Sound(buffer);
+		
+		auto clock = new Clock();
+		
+		recorderSound.play();
+		while(clock.getElapsedTime() < recorderDuration)
+		{
+			//sound playing
+		}
+		
+		
+		
+		
+		writeln();
 	}
-
-private:
-	short[] m_samples;
-	SoundBuffer m_buffer;
-
 }
 
 

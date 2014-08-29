@@ -30,8 +30,8 @@ All Libraries used by SFML - For a full list see http://www.sfml-dev.org/license
 
 module dsfml.system.vector2;
 
-import std.traits;
 import std.conv;
+import std.traits;
 
 struct Vector2(T)
 	if(isNumeric!(T))
@@ -44,7 +44,12 @@ struct Vector2(T)
 		x = X;
 		y = Y;	
 	}
-	
+
+	this(E)(Vector2!(E) otherVector)
+	{
+		x = cast(T)(otherVector.x);
+		y = cast(T)(otherVector.y);
+	}
 
 	
 	//I think it could be a useful function, but
@@ -143,10 +148,18 @@ return Vector2!(T)(0,0);
 			return this;
 		}
 	}
-	
+
+	//assign operator
+	ref Vector2!(T) opAssign(E)(Vector2!(E) otherVector)
+	{
+		x = cast(T)(otherVector.x);
+		y = cast(T)(otherVector.y);
+		return this;
+	}
 	
 	//Compare operator
 	bool opEquals(E)(const Vector2!(E) otherVector) const
+	if(isNumeric!(E))
 	{
 		return ((x == otherVector.x) && (y == otherVector.y));
 	}
@@ -164,40 +177,42 @@ alias Vector2!(uint) Vector2u;
 
 unittest
 {
-	import std.stdio;
+	version(DSFML_Unittest_System)
+	{
+		import std.stdio;
 
-	writeln("Unit test for Vector2");
+		writeln("Unit test for Vector2");
 
-	auto floatVector2 = Vector2f(100,100);
+		auto floatVector2 = Vector2f(100,100);
 
-	assert((floatVector2/2) == Vector2f(50,50));
+		assert((floatVector2/2) == Vector2f(50,50));
 
-	assert((floatVector2*2) == Vector2f(200,200));
+		assert((floatVector2*2) == Vector2f(200,200));
 
-	assert((floatVector2 + Vector2f(50, 0)) == Vector2f(150, 100));
+		assert((floatVector2 + Vector2f(50, 0)) == Vector2f(150, 100));
 
-	assert((floatVector2 - Vector2f(50,0)) == Vector2f(50,100));
+		assert((floatVector2 - Vector2f(50,0)) == Vector2f(50,100));
 
-	floatVector2/=2;
+		floatVector2/=2;
 
-	assert(floatVector2 == Vector2f(50,50));
+		assert(floatVector2 == Vector2f(50,50));
 
-	floatVector2*=2;
+		floatVector2*=2;
 
-	assert(floatVector2 == Vector2f(100,100));
+		assert(floatVector2 == Vector2f(100,100));
 
-	floatVector2+= Vector2f(50,0);
+		floatVector2+= Vector2f(50,0);
 
-	assert(floatVector2 == Vector2f(150,100));
+		assert(floatVector2 == Vector2f(150,100));
 
-	floatVector2-=Vector2f(50,100);
+		floatVector2-=Vector2f(50,100);
 
-	assert(floatVector2 == Vector2f(100,0));
+		assert(floatVector2 == Vector2f(100,0));
 
+	
+		writeln("Vector2 tests passed");
+		writeln();
 
-	writeln("Vector2 tests passed");
-	writeln();
-
-
+	}
 }
 
